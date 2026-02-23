@@ -27,6 +27,20 @@ export interface RunCrawlJobOptions {
   persistRunLog?: boolean;
 }
 
+const DEFAULT_FETCH_TIMEOUT_MS = 15000;
+const DEFAULT_FETCH_RETRIES = 2;
+const DEFAULT_FEED_HEADERS: Record<string, string> = {
+  "user-agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 TechScopeBot/0.3",
+  accept: "application/rss+xml, application/atom+xml, application/xml, text/xml, */*;q=0.8",
+  "cache-control": "no-cache"
+};
+const DEFAULT_PAGE_HEADERS: Record<string, string> = {
+  "user-agent": DEFAULT_FEED_HEADERS["user-agent"],
+  accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  "cache-control": "no-cache"
+};
+
 function normalizeUrl(url: string): string {
   try {
     const parsed = new URL(url);
@@ -70,12 +84,16 @@ async function upsertPost(db: DbLike, post: PostRecord): Promise<void> {
     .run();
 }
 
-async function fetchWithTimeout(url: string, timeoutMs = 15000): Promise<Response> {
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchWithTimeout(url: string, timeoutMs = DEFAULT_FETCH_TIMEOUT_MS): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     return await fetch(url, {
-      headers: { "user-agent": "TechScopeBot/0.2" },
+      headers: DEFAULT_FEED_HEADERS,
       signal: controller.signal
     });
   } finally {
@@ -83,11 +101,90 @@ async function fetchWithTimeout(url: string, timeoutMs = 15000): Promise<Respons
   }
 }
 
+async function fetchTextWithTimeout(
+  url: string,
+  headers: Record<string, string>,
+  timeoutMs = DEFAULT_FETCH_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, {
+      headers,
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function fetchFeedWithRetry(source: SourceConfig): Promise<Response> {
+  if (!source.feedUrl) {
+    throw new Error("feedUrl is missing");
+  }
+
+  let lastError: unknown = null;
+  for (let attempt = 1; attempt <= DEFAULT_FETCH_RETRIES + 1; attempt += 1) {
+    try {
+      const res = await fetchWithTimeout(source.feedUrl);
+      if (!res.ok) {
+        const contentType = res.headers.get("content-type") ?? "unknown";
+        throw new Error(`HTTP ${res.status} (${contentType}) [attempt ${attempt}]`);
+      }
+      return res;
+    } catch (error) {
+      lastError = error;
+      if (attempt <= DEFAULT_FETCH_RETRIES) {
+        await sleep(300 * attempt);
+        continue;
+      }
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+}
+
+function extractPublishedDateFromArticleHtml(html: string): string | null {
+  const candidates = [
+    /"datePublished"\s*:\s*"([^"]+)"/i,
+    /<meta[^>]+property=["']article:published_time["'][^>]+content=["']([^"']+)["']/i,
+    /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']article:published_time["']/i,
+    /<meta[^>]+itemprop=["']datePublished["'][^>]+content=["']([^"']+)["']/i,
+    /<time[^>]+datetime=["']([^"']+)["']/i
+  ];
+
+  for (const regex of candidates) {
+    const raw = html.match(regex)?.[1]?.trim();
+    if (!raw) continue;
+    const d = new Date(raw);
+    if (!Number.isNaN(d.getTime())) return d.toISOString();
+  }
+
+  return null;
+}
+
+async function enrichPublishedDatesFromPages(source: SourceConfig, posts: PostRecord[]): Promise<void> {
+  if (!source.resolvePublishedAtFromPage) return;
+
+  for (const post of posts) {
+    if (post.publishedAt) continue;
+    try {
+      const res = await fetchTextWithTimeout(post.url, DEFAULT_PAGE_HEADERS, 12000);
+      if (!res.ok) continue;
+      const html = await res.text();
+      const publishedAt = extractPublishedDateFromArticleHtml(html);
+      if (publishedAt) post.publishedAt = publishedAt;
+      await sleep(80);
+    } catch {
+      // Best-effort enrichment only. Keep null and fallback to fetchedAt in UI.
+    }
+  }
+}
+
 async function fetchSource(source: SourceConfig): Promise<PostRecord[]> {
   if (!source.feedUrl) return [];
 
-  const res = await fetchWithTimeout(source.feedUrl);
-  if (!res.ok) throw new Error(`Feed fetch failed (${res.status})`);
+  const res = await fetchFeedWithRetry(source);
 
   const xml = await res.text();
   const items = parseFeedXml(xml);
@@ -113,6 +210,13 @@ async function fetchSource(source: SourceConfig): Promise<PostRecord[]> {
     });
   }
 
+  if (source.maxItems && source.maxItems > 0) {
+    const limited = posts.slice(0, source.maxItems);
+    await enrichPublishedDatesFromPages(source, limited);
+    return limited;
+  }
+
+  await enrichPublishedDatesFromPages(source, posts);
   return posts;
 }
 
@@ -249,7 +353,10 @@ export async function runCrawlJob(db: DbLike, options: RunCrawlJobOptions = {}):
         fetched: 0,
         upserted: 0,
         skipped: 0,
-        error: error instanceof Error ? error.message : String(error)
+        error:
+          error instanceof Error
+            ? `[${source.id}] ${error.message} | feed=${source.feedUrl ?? "n/a"}`
+            : `[${source.id}] ${String(error)} | feed=${source.feedUrl ?? "n/a"}`
       };
       results.push(row);
       if (persistRunLog && runId) await insertCrawlRunResult(db, runId, row);

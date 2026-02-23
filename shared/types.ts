@@ -17,6 +17,8 @@ export interface SourceConfig {
   homepageUrl: string;
   feedUrl?: string;
   enabled: boolean;
+  maxItems?: number;
+  resolvePublishedAtFromPage?: boolean;
   note?: string;
 }
 
