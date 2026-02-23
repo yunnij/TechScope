@@ -4,6 +4,10 @@
   <img src="./public/favicon.svg" alt="TechScope icon" width="72" height="72" />
 </p>
 
+## Live URL
+
+- https://techscope-4yl.pages.dev/
+
 주니어 개발자를 위한 기술블로그 레이더입니다.  
 여러 IT 기업의 기술블로그 글을 수집하고, 회사/분야/기간 필터로 빠르게 탐색할 수 있는 대시보드 서비스입니다.
 
