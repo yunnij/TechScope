@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TechScope | 기업 기술블로그 대시보드</title>
+    <meta name="description" content="기업 기술블로그 신규 글 대시보드" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="bg-orb orb-a" aria-hidden="true"></div>
+    <div class="bg-orb orb-b" aria-hidden="true"></div>
+
+    <main class="layout">
+      <header class="hero">
+        <section class="hero-copy-block">
+          <div class="hero-topbar">
+            <p class="eyebrow">TechScope</p>
+            <button id="themeToggle" class="theme-toggle" type="button" aria-label="다크모드 전환">
+              <span class="theme-toggle-text">다크모드</span>
+            </button>
+          </div>
+          <h1>주니어 개발자를 위한<br />기술블로그 레이더</h1>
+          <p class="hero-copy">
+            여러 IT 기업 기술블로그를 매일 수집하고, 회사/분야 필터와 시간 탭으로 빠르게 탐색하는 대시보드입니다.
+          </p>
+          <div class="range-tabs" role="tablist" aria-label="기간 필터">
+            <button class="range-tab is-active" type="button" role="tab" aria-selected="true" data-range="all">
+              전체
+            </button>
+            <button class="range-tab" type="button" role="tab" aria-selected="false" data-range="today">
+              오늘
+            </button>
+            <button class="range-tab" type="button" role="tab" aria-selected="false" data-range="week">
+              이번 주
+            </button>
+          </div>
+        </section>
+
+        <aside class="hero-panel" aria-label="상태 요약">
+          <div class="stat">
+            <span class="label">서비스 상태</span>
+            <strong id="statusText">불러오는 중...</strong>
+          </div>
+          <div class="stat">
+            <span class="label">총 게시글</span>
+            <strong id="totalCount">-</strong>
+          </div>
+          <div class="stat">
+            <span class="label">마지막 조회</span>
+            <strong id="lastLoadedAt">-</strong>
+          </div>
+        </aside>
+      </header>
+
+      <section class="toolbar" aria-label="필터">
+        <label class="field">
+          <span>기업</span>
+          <select id="companyFilter">
+            <option value="">전체 기업</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>분야</span>
+          <select id="topicFilter">
+            <option value="">전체 분야</option>
+          </select>
+        </label>
+        <button id="refreshBtn" class="refresh-btn" type="button">새로고침</button>
+      </section>
+
+      <section id="activeFilters" class="active-filters" aria-live="polite"></section>
+
+      <section class="content-block">
+        <div class="section-head">
+          <h2>최신 글</h2>
+          <p id="resultSummary">-</p>
+        </div>
+        <div id="postGrid" class="post-grid" aria-live="polite"></div>
+        <div id="emptyState" class="empty-state hidden">
+          <p>표시할 게시글이 없습니다.</p>
+          <small>크롤러를 실행하거나 필터/기간 탭을 변경해 보세요.</small>
+        </div>
+      </section>
+
+      <section class="content-block source-status">
+        <div class="section-head">
+          <h2>수집 대상 기업</h2>
+          <p>RSS 준비 여부 확인</p>
+        </div>
+        <div id="sourceList" class="source-list"></div>
+      </section>
+    </main>
+
+    <template id="postCardTemplate">
+      <article class="post-card">
+        <div class="post-card-head">
+          <div class="company-meta">
+            <span class="company-avatar" aria-hidden="true"></span>
+            <span class="company-chip"></span>
+          </div>
+          <span class="topic-chip"></span>
+        </div>
+        <h3 class="post-title"></h3>
+        <p class="post-summary"></p>
+        <div class="post-meta">
+          <time class="post-date"></time>
+          <a class="post-link" target="_blank" rel="noopener noreferrer">원문 보기</a>
+        </div>
+      </article>
+    </template>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+  </html>

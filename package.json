@@ -1,0 +1,17 @@
+{
+  "name": "techscope",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:pages": "wrangler pages dev public --compatibility-date=2026-02-23",
+    "dev:worker": "wrangler dev workers/crawler/src/index.ts --config workers/crawler/wrangler.toml",
+    "d1:migrate:local": "wrangler d1 migrations apply techscope --local --config wrangler.toml",
+    "d1:migrate:remote": "wrangler d1 migrations apply techscope --remote --config wrangler.toml"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260220.0",
+    "typescript": "^5.7.3",
+    "wrangler": "^4.3.0"
+  }
+}
