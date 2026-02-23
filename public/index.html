@@ -25,10 +25,23 @@
           <p class="hero-copy">
             여러 IT 기업 기술블로그를 매일 수집하고, 회사/분야 필터와 시간 탭으로 빠르게 탐색하는 대시보드입니다.
           </p>
-          <div class="range-tabs" role="tablist" aria-label="기간 필터">
-            <button class="range-tab is-active" type="button" role="tab" aria-selected="true" data-range="all">전체</button>
-            <button class="range-tab" type="button" role="tab" aria-selected="false" data-range="today">오늘</button>
-            <button class="range-tab" type="button" role="tab" aria-selected="false" data-range="week">이번 주</button>
+          <div class="hero-filter-row">
+            <div class="range-tabs" role="tablist" aria-label="기간 필터">
+              <button class="range-tab is-active" type="button" role="tab" aria-selected="true" data-range="all">전체</button>
+              <button class="range-tab" type="button" role="tab" aria-selected="false" data-range="today">오늘</button>
+              <button class="range-tab" type="button" role="tab" aria-selected="false" data-range="week">이번 주</button>
+            </div>
+            <div class="search-row search-row-hero">
+              <label class="sr-only" for="searchInput">게시글 검색</label>
+              <input
+                id="searchInput"
+                class="search-input"
+                type="search"
+                placeholder="제목, 요약, 회사명으로 검색"
+                autocomplete="off"
+                spellcheck="false"
+              />
+            </div>
           </div>
         </section>
 
@@ -89,12 +102,12 @@
               <h2>수집 대상 기업 상태</h2>
               <div class="section-head-actions">
                 <p>RSS 준비 여부를 빠르게 확인할 수 있습니다.</p>
-                <button id="sourceStatusToggle" class="ghost-toggle-btn" type="button" aria-expanded="true">
-                  숨기기
+                <button id="sourceStatusToggle" class="ghost-toggle-btn" type="button" aria-expanded="false">
+                  보기
                 </button>
               </div>
             </div>
-            <div id="sourceList" class="source-list"></div>
+            <div id="sourceList" class="source-list hidden"></div>
           </section>
         </section>
       </div>

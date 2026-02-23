@@ -3,6 +3,7 @@ const THEME_KEY = "techscope-theme";
 const state = {
   selectedCompanies: [],
   selectedTopics: [],
+  searchQuery: "",
   range: "all",
   currentPage: 1,
   pageSize: 60,
@@ -18,6 +19,7 @@ const els = {
   rangeTabs: Array.from(document.querySelectorAll(".range-tab")),
   companyTabList: document.querySelector("#companyTabList"),
   topicChipList: document.querySelector("#topicChipList"),
+  searchInput: document.querySelector("#searchInput"),
   postGrid: document.querySelector("#postGrid"),
   emptyState: document.querySelector("#emptyState"),
   postPagination: document.querySelector("#postPagination"),
@@ -78,6 +80,50 @@ function makePill(text) {
   return el;
 }
 
+function formatTopicDisplay(value) {
+  if (!value) return "Other";
+
+  const normalized = String(value).trim();
+  const lower = normalized.toLowerCase();
+  const map = {
+    ai: "AI",
+    ml: "ML",
+    llm: "LLM",
+    api: "API",
+    qa: "QA",
+    ui: "UI",
+    ux: "UX",
+    db: "DB",
+    sre: "SRE",
+    ios: "iOS",
+    cs: "CS",
+    devops: "DevOps",
+    frontend: "Frontend",
+    backend: "Backend",
+    mobile: "Mobile",
+    data: "Data",
+    infra: "Infra",
+    security: "Security",
+    cloud: "Cloud",
+    platform: "Platform",
+    product: "Product",
+    testing: "Testing"
+  };
+
+  if (map[lower]) return map[lower];
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+function sortTopicsForDisplay(topics) {
+  return [...topics].sort((a, b) => {
+    const aIsOther = String(a).toLowerCase() === "other";
+    const bIsOther = String(b).toLowerCase() === "other";
+    if (aIsOther && !bIsOther) return 1;
+    if (!aIsOther && bIsOther) return -1;
+    return formatTopicDisplay(a).localeCompare(formatTopicDisplay(b), "en", { sensitivity: "base" });
+  });
+}
+
 function renderPills() {
   clearChildren(els.activeFilters);
 
@@ -86,7 +132,11 @@ function renderPills() {
   }
 
   for (const topic of state.selectedTopics) {
-    els.activeFilters.append(makePill(`분야: ${topic}`));
+    els.activeFilters.append(makePill(`분야: ${formatTopicDisplay(topic)}`));
+  }
+
+  if (state.searchQuery.trim()) {
+    els.activeFilters.append(makePill(`검색: ${state.searchQuery.trim()}`));
   }
 
   if (state.range === "today") els.activeFilters.append(makePill("기간: 오늘"));
@@ -120,7 +170,15 @@ function applySelectionFilters(posts) {
       state.selectedCompanies.length === 0 || state.selectedCompanies.includes(post.company);
     const topicMatch =
       state.selectedTopics.length === 0 || state.selectedTopics.includes(post.primaryTopic);
-    return companyMatch && topicMatch;
+    const q = state.searchQuery.trim().toLowerCase();
+    const searchMatch =
+      q.length === 0 ||
+      [post.title, post.summary ?? "", post.company]
+        .join(" ")
+        .toLowerCase()
+        .includes(q);
+
+    return companyMatch && topicMatch && searchMatch;
   });
 }
 
@@ -176,7 +234,7 @@ function getPagedPosts(posts) {
 }
 
 function topicLabel(value) {
-  return value || "other";
+  return formatTopicDisplay(value || "other");
 }
 
 function avatarLabel(company) {
@@ -263,7 +321,7 @@ function renderTopicChips(topics) {
     const chip = document.createElement("button");
     chip.type = "button";
     chip.className = `topic-filter-chip ${active ? "is-active" : ""}`;
-    chip.textContent = topic;
+    chip.textContent = formatTopicDisplay(topic);
     chip.addEventListener("click", () => {
       if (active) {
         state.selectedTopics = state.selectedTopics.filter((t) => t !== topic);
@@ -513,7 +571,7 @@ async function loadPosts() {
     const runsData = runsRes.ok ? await runsRes.json() : { runs: [] };
 
     state.companies = Array.isArray(data.filters?.companies) ? data.filters.companies : [];
-    state.topics = Array.isArray(data.filters?.topics) ? data.filters.topics : [];
+    state.topics = Array.isArray(data.filters?.topics) ? sortTopicsForDisplay(data.filters.topics) : [];
     state.allPosts = Array.isArray(data.posts) ? data.posts : [];
     resetToFirstPage();
 
@@ -542,8 +600,18 @@ async function loadPosts() {
 els.refreshBtn?.addEventListener("click", () => {
   state.selectedCompanies = [];
   state.selectedTopics = [];
+  state.searchQuery = "";
+  if (els.searchInput) els.searchInput.value = "";
   setRange("all");
   loadPosts();
+});
+
+els.searchInput?.addEventListener("input", (event) => {
+  const target = event.currentTarget;
+  if (!(target instanceof HTMLInputElement)) return;
+  state.searchQuery = target.value;
+  resetToFirstPage();
+  rerenderPostArea();
 });
 
 els.rangeTabs.forEach((btn) => {
