@@ -39,8 +39,7 @@ export const SOURCES: SourceConfig[] = [
   { id: "pinterest", company: "Pinterest", homepageUrl: "https://medium.com/pinterest-engineering", feedUrl: "https://medium.com/feed/pinterest-engineering", enabled: true, note: "Pinterest Engineering Medium publication" },
   { id: "twitter", company: "Twitter/X", homepageUrl: "https://blog.x.com/engineering/en_us", enabled: false, note: "Candidate RSS paths returned 403" },
   { id: "figma", company: "Figma", homepageUrl: "https://www.figma.com/blog/engineering", enabled: false, note: "Public RSS not confirmed" },
-  { id: "spotify", company: "Spotify", homepageUrl: "https://engineering.atspotify.com", feedUrl: "https://engineering.atspotify.com/feed", enabled: true },
-  { id: "geeknews", company: "GeekNews", homepageUrl: "https://news.hada.io", feedUrl: "https://news.hada.io/rss/news", enabled: true, note: "Reference tech news feed (not a company blog)" }
+  { id: "spotify", company: "Spotify", homepageUrl: "https://engineering.atspotify.com", feedUrl: "https://engineering.atspotify.com/feed", enabled: true }
 ];
 
 export const ENABLED_SOURCES = SOURCES.filter((source) => source.enabled && source.feedUrl);

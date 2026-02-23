@@ -1,8 +1,12 @@
 import type { ParsedFeedItem } from "./types";
 
+const SUMMARY_MAX_CHARS = 1400;
+
 function decodeXml(value: string): string {
   return value
     .replace(/<!\[CDATA\[(.*?)\]\]>/gs, "$1")
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)))
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&amp;/g, "&")
@@ -13,7 +17,12 @@ function decodeXml(value: string): string {
 }
 
 function stripHtml(value: string): string {
-  return value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  return value
+    .replace(/!\[[^\]]*]\(([^)]+)\)/g, " ") // markdown image
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1") // markdown link -> text only
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function matchTag(block: string, tag: string): string | null {
@@ -55,8 +64,8 @@ function parseRssItems(xml: string): ParsedFeedItem[] {
       publishedAt: toIso(matchTag(block, "pubDate") ?? matchTag(block, "dc:date")),
       categories: [...matchTags(block, "category"), ...matchTags(block, "dc:subject")],
       summary: (() => {
-        const raw = matchTag(block, "description") ?? matchTag(block, "content:encoded");
-        return raw ? stripHtml(raw).slice(0, 400) : null;
+        const raw = matchTag(block, "content:encoded") ?? matchTag(block, "description");
+        return raw ? stripHtml(raw).slice(0, SUMMARY_MAX_CHARS) : null;
       })()
     }))
     .filter((item) => item.title && item.url);
@@ -73,8 +82,8 @@ function parseAtomEntries(xml: string): ParsedFeedItem[] {
         .map((m) => decodeXml(m[1]?.match(/\bterm=["']([^"']+)["']/i)?.[1] ?? ""))
         .filter(Boolean),
       summary: (() => {
-        const raw = matchTag(block, "summary") ?? matchTag(block, "content");
-        return raw ? stripHtml(raw).slice(0, 400) : null;
+        const raw = matchTag(block, "content") ?? matchTag(block, "summary");
+        return raw ? stripHtml(raw).slice(0, SUMMARY_MAX_CHARS) : null;
       })()
     }))
     .filter((item) => item.title && item.url);

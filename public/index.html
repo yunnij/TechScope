@@ -26,15 +26,9 @@
             여러 IT 기업 기술블로그를 매일 수집하고, 회사/분야 필터와 시간 탭으로 빠르게 탐색하는 대시보드입니다.
           </p>
           <div class="range-tabs" role="tablist" aria-label="기간 필터">
-            <button class="range-tab is-active" type="button" role="tab" aria-selected="true" data-range="all">
-              전체
-            </button>
-            <button class="range-tab" type="button" role="tab" aria-selected="false" data-range="today">
-              오늘
-            </button>
-            <button class="range-tab" type="button" role="tab" aria-selected="false" data-range="week">
-              이번 주
-            </button>
+            <button class="range-tab is-active" type="button" role="tab" aria-selected="true" data-range="all">전체</button>
+            <button class="range-tab" type="button" role="tab" aria-selected="false" data-range="today">오늘</button>
+            <button class="range-tab" type="button" role="tab" aria-selected="false" data-range="week">이번 주</button>
           </div>
         </section>
 
@@ -48,49 +42,62 @@
             <strong id="totalCount">-</strong>
           </div>
           <div class="stat">
-            <span class="label">마지막 조회</span>
+            <span class="label">마지막 업데이트</span>
             <strong id="lastLoadedAt">-</strong>
           </div>
         </aside>
       </header>
 
-      <section class="toolbar" aria-label="필터">
-        <label class="field">
-          <span>기업</span>
-          <select id="companyFilter">
-            <option value="">전체 기업</option>
-          </select>
-        </label>
-        <label class="field">
-          <span>분야</span>
-          <select id="topicFilter">
-            <option value="">전체 분야</option>
-          </select>
-        </label>
-        <button id="refreshBtn" class="refresh-btn" type="button">새로고침</button>
+      <section class="topic-filter-panel" aria-label="분야 카테고리 필터">
+        <div class="topic-filter-head">
+          <div>
+            <p class="mini-label">분야별 카테고리</p>
+            <h2>카테고리 선택</h2>
+          </div>
+          <button id="refreshBtn" class="refresh-btn" type="button">필터 초기화</button>
+        </div>
+        <div id="topicChipList" class="topic-chip-list" role="listbox" aria-label="분야 선택"></div>
       </section>
 
       <section id="activeFilters" class="active-filters" aria-live="polite"></section>
 
-      <section class="content-block">
-        <div class="section-head">
-          <h2>최신 글</h2>
-          <p id="resultSummary">-</p>
-        </div>
-        <div id="postGrid" class="post-grid" aria-live="polite"></div>
-        <div id="emptyState" class="empty-state hidden">
-          <p>표시할 게시글이 없습니다.</p>
-          <small>크롤러를 실행하거나 필터/기간 탭을 변경해 보세요.</small>
-        </div>
-      </section>
+      <div class="app-shell">
+        <aside class="sidebar-panel" aria-label="기업 목록">
+          <div class="sidebar-head">
+            <p class="mini-label">회사 필터</p>
+            <h2>기업 선택</h2>
+          </div>
+          <div id="companyTabList" class="company-tab-list" role="tablist" aria-label="기업 필터"></div>
+        </aside>
 
-      <section class="content-block source-status">
-        <div class="section-head">
-          <h2>수집 대상 기업</h2>
-          <p>RSS 준비 여부 확인</p>
-        </div>
-        <div id="sourceList" class="source-list"></div>
-      </section>
+        <section class="main-column">
+          <section class="content-block">
+            <div class="section-head">
+              <h2>최신 글</h2>
+              <p id="resultSummary">-</p>
+            </div>
+            <div id="postGrid" class="post-grid" aria-live="polite"></div>
+            <div id="emptyState" class="empty-state hidden">
+              <p>표시할 게시글이 없습니다.</p>
+              <small>기업/분야/기간 필터를 변경하거나 크롤러를 실행해 보세요.</small>
+            </div>
+            <nav id="postPagination" class="pagination hidden" aria-label="게시글 페이지네이션"></nav>
+          </section>
+
+          <section class="content-block source-status">
+            <div class="section-head">
+              <h2>수집 대상 기업 상태</h2>
+              <div class="section-head-actions">
+                <p>RSS 준비 여부를 빠르게 확인할 수 있습니다.</p>
+                <button id="sourceStatusToggle" class="ghost-toggle-btn" type="button" aria-expanded="true">
+                  숨기기
+                </button>
+              </div>
+            </div>
+            <div id="sourceList" class="source-list"></div>
+          </section>
+        </section>
+      </div>
     </main>
 
     <template id="postCardTemplate">
@@ -102,14 +109,20 @@
           </div>
           <span class="topic-chip"></span>
         </div>
-        <h3 class="post-title"></h3>
+        <h3 class="post-title">
+          <a class="post-title-link" target="_blank" rel="noopener noreferrer"></a>
+        </h3>
         <p class="post-summary"></p>
         <div class="post-meta">
           <time class="post-date"></time>
-          <a class="post-link" target="_blank" rel="noopener noreferrer">원문 보기</a>
+          <button class="copy-link-btn" type="button" aria-label="링크 복사" title="링크 복사">
+            <span class="copy-link-emoji" aria-hidden="true">🔗</span>
+          </button>
         </div>
       </article>
     </template>
+
+    <div id="copyToast" class="copy-toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
     <script type="module" src="/app.js"></script>
   </body>
