@@ -1,0 +1,12 @@
+name = "techscope-crawler"
+main = "src/index.ts"
+compatibility_date = "2026-02-23"
+
+[[d1_databases]]
+binding = "techscope"
+database_name = "techscope"
+database_id = "da4c6754-245a-40f0-8de3-9e742bec3262"
+migrations_dir = "../../migrations"
+
+[triggers]
+crons = ["0 0 * * *"]
