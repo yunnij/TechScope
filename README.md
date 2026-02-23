@@ -1,7 +1,5 @@
 # TechScope
-
-여러 기업의 기술 블로그 새 글을 한눈에 확인할 수 있는 대시보드 서비스입니다.  
-Cloudflare Pages + Pages Functions + D1 + Cron Worker 구조를 기준으로 만든 프로젝트 뼈대입니다.
+TechScope — 국내 IT 기업 기술 블로그를 한눈에 모아보는 대시보드 서비스
 
 ## What It Does
 
