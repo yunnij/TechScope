@@ -1,18 +1,21 @@
 # TechScope
 
-주니어 개발자를 위해 여러 기업 기술 블로그의 새 글을 한눈에 모아보는 대시보드 서비스입니다.
+<p align="center">
+  <img src="./public/favicon.svg" alt="TechScope icon" width="72" height="72" />
+</p>
 
-Cloudflare Pages + Pages Functions + D1 + Cron Worker 구조를 기준으로 구현되어 있습니다.
+주니어 개발자를 위한 기술블로그 레이더입니다.  
+여러 IT 기업의 기술블로그 글을 수집하고, 회사/분야/기간 필터로 빠르게 탐색할 수 있는 대시보드 서비스입니다.
 
-## Features
+## What It Does
 
-- 기업 기술 블로그 글 수집 (RSS / Atom 기반)
-- 대시보드에서 최신 글 확인
-- 기업 / 분야 필터링
-- 원문 링크 바로 이동
-- D1 `url` 기준 upsert (중복 저장 방지)
-- Cron Worker 기반 일 1회 자동 수집
-- 수동 크롤링 API + 크롤링 실행 이력 API
+- 여러 기업 기술블로그 RSS/Atom 수집
+- 대시보드에서 최신 글 목록 확인
+- 회사 / 분야 / 기간 필터링
+- 글 제목 클릭 시 원문 이동
+- 링크 복사 버튼으로 URL 복사
+- Cloudflare D1 기반 저장 및 중복 방지(`url` 기준 upsert)
+- 수동 크롤링 및 크롤링 실행 이력 확인 API
 
 ## Architecture
 
@@ -25,10 +28,10 @@ Cloudflare Pages + Pages Functions + D1 + Cron Worker 구조를 기준으로 구
 
 ```text
 .
-├─ public/                  # Pages frontend (static)
+├─ public/                  # Dashboard UI (Pages frontend)
 ├─ functions/api/           # Pages Functions API
-├─ shared/                  # shared crawler/rss/topic logic
-├─ migrations/              # D1 schema migrations
+├─ shared/                  # Shared crawler / RSS / topic logic
+├─ migrations/              # D1 migrations
 └─ workers/crawler/         # Cron Worker (daily crawler)
 ```
 
@@ -41,77 +44,21 @@ Cloudflare Pages + Pages Functions + D1 + Cron Worker 구조를 기준으로 구
   - 수동 크롤링 실행
   - Query: `sourceId` (선택, 특정 소스만 실행)
   - 선택 인증: `x-admin-token` 또는 `Authorization: Bearer ...`
-  - `CRAWL_ADMIN_TOKEN` 바인딩을 설정하면 토큰이 필요합니다
 - `GET /api/crawl-runs`
   - 최근 크롤링 실행 이력 조회
   - Query: `limit`, `includeResults=1`
 
-## Worker Endpoints (dev/test)
+## Deployment (Cloudflare)
 
-- `GET /run` : 수동 크롤링 실행 (Worker dev 서버)
-- `GET /health`
+- Cloudflare Pages: 프론트 + Pages Functions
+- Cloudflare D1: 게시글/크롤링 로그 저장
+- Cloudflare Worker + Cron Trigger: 일 1회 수집 배치
 
-## Local Setup
+배포 시 확인할 점
 
-## 1) Install dependencies
-
-```bash
-npm install
-```
-
-## 2) Login to Cloudflare (if needed)
-
-```bash
-npx wrangler login
-```
-
-## 3) Create D1 database
-
-```bash
-npx wrangler d1 create techscope
-```
-
-생성 후 출력되는 `database_id`를 아래 2개 파일에 동일하게 입력하세요.
-
-- `wrangler.toml`
-- `workers/crawler/wrangler.toml`
-
-## 4) Apply migrations (local)
-
-```bash
-npm run d1:migrate:local
-```
-
-## 5) Run Pages (frontend + API)
-
-```bash
-npm run dev:pages
-```
-
-Wrangler가 출력하는 로컬 URL(예: `http://127.0.0.1:8788`)로 접속합니다.
-
-## 6) Run crawler worker (separate terminal)
-
-```bash
-npm run dev:worker
-```
-
-수동 테스트:
-
-- Worker 실행 테스트: `http://127.0.0.1:8787/run`
-- Pages API 기준 수동 실행(권장): `http://127.0.0.1:8788/api/admin/crawl`
-
-브라우저에 JSON이 보이는 것이 정상입니다. 수집 결과 리포트를 반환합니다.
-
-## Important Local Dev Note
-
-로컬 개발에서는 `Pages`와 `Worker`가 서로 다른 Wrangler 실행 컨텍스트를 사용하므로,
-로컬 D1 상태가 분리되어 보일 수 있습니다.
-
-- Worker `/run` 에서는 저장 성공처럼 보이는데
-- Pages `/api/posts` 에 바로 안 보일 수 있음
-
-로컬에서 UI와 같은 D1 컨텍스트로 테스트하려면 `Pages`의 `/api/admin/crawl`을 사용하세요.
+- Pages / Worker 모두 동일한 D1을 `DB` 바인딩으로 연결
+- `database_id`는 로컬 `.env` 기반 동기화 스크립트로 관리 (`D1_DATABASE_ID`)
+- 필요 시 `CRAWL_ADMIN_TOKEN` 설정 후 `/api/admin/crawl` 보호
 
 ## Customization
 
@@ -123,12 +70,5 @@ npm run dev:worker
 
 ## Notes
 
-- 일부 기업은 RSS URL 미확인으로 `enabled: false` 상태입니다.
-- `shared/sources.ts`에서 `feedUrl` 추가 후 `enabled: true`로 변경하면 수집 대상에 포함됩니다.
-- RSS가 없는 사이트는 HTML 크롤러 어댑터를 추가하는 방식으로 확장 가능합니다.
-
-## Recommended Deployment
-
-- Cloudflare Pages 프로젝트 1개 (frontend + Pages Functions)
-- Cloudflare Worker 프로젝트 1개 (cron crawler)
-- 동일한 D1 데이터베이스를 `DB` 바인딩으로 연결
+- 일부 기업은 RSS 미확인 상태라 비활성(`enabled: false`)일 수 있습니다.
+- RSS가 없는 사이트는 HTML 크롤러 어댑터 방식으로 확장 가능합니다.
