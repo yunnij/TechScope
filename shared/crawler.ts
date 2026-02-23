@@ -29,6 +29,7 @@ export interface RunCrawlJobOptions {
 
 const DEFAULT_FETCH_TIMEOUT_MS = 15000;
 const DEFAULT_FETCH_RETRIES = 2;
+const CRAWL_LOG_RETENTION_DAYS = 7;
 const DEFAULT_FEED_HEADERS: Record<string, string> = {
   "user-agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 TechScopeBot/0.3",
@@ -292,6 +293,30 @@ async function finalizeCrawlRun(
     .run();
 }
 
+function getIsoDaysAgo(days: number): string {
+  return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+}
+
+async function cleanupOldCrawlLogs(db: DbLike, retentionDays = CRAWL_LOG_RETENTION_DAYS): Promise<void> {
+  const cutoff = getIsoDaysAgo(retentionDays);
+
+  // Delete child rows first to avoid relying on FK cascade behavior/config.
+  await db
+    .prepare(
+      `DELETE FROM crawl_run_results
+       WHERE crawl_run_id IN (
+         SELECT id FROM crawl_runs WHERE started_at < ?
+       )`
+    )
+    .bind(cutoff)
+    .run();
+
+  await db
+    .prepare("DELETE FROM crawl_runs WHERE started_at < ?")
+    .bind(cutoff)
+    .run();
+}
+
 function selectSources(sourceIds?: string[]): SourceConfig[] {
   if (!sourceIds || sourceIds.length === 0) return ENABLED_SOURCES;
   const set = new Set(sourceIds);
@@ -368,6 +393,11 @@ export async function runCrawlJob(db: DbLike, options: RunCrawlJobOptions = {}):
 
   if (persistRunLog && runId) {
     await finalizeCrawlRun(db, runId, finishedAt, status, summary);
+    try {
+      await cleanupOldCrawlLogs(db);
+    } catch {
+      // Best-effort cleanup. Do not fail the crawl result if cleanup fails.
+    }
   }
 
   return {
