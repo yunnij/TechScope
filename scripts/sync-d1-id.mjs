@@ -42,12 +42,14 @@ function loadEnv() {
 function replaceDatabaseId(filePath, nextDatabaseId) {
   const fullPath = path.join(rootDir, filePath);
   const current = fs.readFileSync(fullPath, "utf8");
+  const pattern = /^(\uFEFF?\s*database_id\s*=\s*)["'][^"']*["']/m;
+  const hasDatabaseIdLine = pattern.test(current);
   const updated = current.replace(
-    /^database_id\s*=\s*"[^"]*"/m,
-    `database_id = "${nextDatabaseId}"`
+    pattern,
+    `$1"${nextDatabaseId}"`
   );
 
-  if (updated === current) {
+  if (!hasDatabaseIdLine) {
     throw new Error(`database_id line not found in ${filePath}`);
   }
 

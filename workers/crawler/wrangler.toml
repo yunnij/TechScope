@@ -1,4 +1,4 @@
-name = "techscope-crawler"
+name = "techscope"
 main = "src/index.ts"
 compatibility_date = "2026-02-23"
 
@@ -9,4 +9,4 @@ database_id = "da4c6754-245a-40f0-8de3-9e742bec3262"
 migrations_dir = "../../migrations"
 
 [triggers]
-crons = ["0 0 * * *"]
+crons = ["0 3 * * *"]
