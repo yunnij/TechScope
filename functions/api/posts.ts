@@ -37,6 +37,17 @@ function parseTopics(value: string): string[] {
 }
 
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
+  if (!env.DB) {
+    return json(
+      {
+        ok: false,
+        error: "D1 binding `DB` is not configured",
+        hint: "Check wrangler.toml [[d1_databases]] binding = \"DB\" and Pages local/dev bindings"
+      },
+      500
+    );
+  }
+
   const u = new URL(request.url);
   const company = u.searchParams.get("company")?.trim() || "";
   const topic = u.searchParams.get("topic")?.trim() || "";
