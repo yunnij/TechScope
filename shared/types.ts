@@ -17,6 +17,8 @@ export interface SourceConfig {
   homepageUrl: string;
   feedUrl?: string;
   enabled: boolean;
+  maxItems?: number;
+  resolvePublishedAtFromPage?: boolean;
   note?: string;
 }
 
@@ -47,4 +49,20 @@ export interface CrawlResult {
   upserted: number;
   skipped: number;
   error?: string;
+}
+
+export interface CrawlSummary {
+  fetched: number;
+  upserted: number;
+  skipped: number;
+  errors: number;
+}
+
+export interface CrawlRunReport {
+  startedAt: string;
+  finishedAt: string;
+  summary: CrawlSummary;
+  results: CrawlResult[];
+  runId?: number | null;
+  status: "success" | "partial" | "failed";
 }
