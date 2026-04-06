@@ -70,6 +70,7 @@
 - `database_id`는 로컬 `.env` 기반 동기화 스크립트로 관리 (`D1_DATABASE_ID`)
 - 필요 시 `CRAWL_ADMIN_TOKEN` 설정 후 `/api/admin/crawl` 보호
 - `migrations/0003_discord_subscriptions.sql` 적용
+- 선택 사항: `GEMINI_API_KEY`를 설정하면 원문 기반 휴리스틱 요약 대신 Gemini가 더 자연스러운 디스코드 요약문을 생성
 
 ## Customization
 

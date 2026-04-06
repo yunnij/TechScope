@@ -6,7 +6,7 @@ import type { CrawlResult, CrawlRunReport, CrawlSummary, PostRecord, SourceConfi
 interface DbLike {
   prepare(query: string): {
     bind(...args: unknown[]): {
-      run<T = unknown>(): Promise<T>;
+      run(): Promise<unknown>;
       first?<T = unknown>(): Promise<T | null>;
     };
   };
