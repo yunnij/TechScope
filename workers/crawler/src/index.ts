@@ -3,6 +3,7 @@ import { dispatchDueDiscordDigests } from "../../../shared/discord";
 
 interface Env {
   DB: D1Database;
+  GEMINI_API_KEY?: string;
 }
 
 function json(body: unknown, status = 200): Response {
@@ -20,7 +21,9 @@ async function runCrawl(env: Env, triggerType: "cron" | "manual", triggerRef: st
 }
 
 async function runDigestDispatch(env: Env) {
-  return dispatchDueDiscordDigests(env.DB);
+  return dispatchDueDiscordDigests(env.DB, new Date(), {
+    geminiApiKey: env.GEMINI_API_KEY
+  });
 }
 
 export default {

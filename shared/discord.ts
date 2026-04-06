@@ -1,3 +1,6 @@
+import { fetchArticleDigestContext } from "./article";
+import { generateGeminiDigestSummary } from "./gemini";
+
 export interface DiscordSubscription {
   id: number;
   webhookUrl: string;
@@ -41,12 +44,16 @@ export interface DeliveryResult {
   };
 }
 
+export interface DigestRuntimeOptions {
+  geminiApiKey?: string;
+}
+
 interface DbLike {
   prepare(query: string): {
     bind(...args: unknown[]): {
       all<T = unknown>(): Promise<{ results?: T[] }>;
       first<T = unknown>(): Promise<T | null>;
-      run<T = unknown>(): Promise<T>;
+      run(): Promise<unknown>;
     };
   };
 }
@@ -141,15 +148,54 @@ function truncate(value: string, maxLength: number): string {
   return value.length <= maxLength ? value : `${value.slice(0, maxLength - 1).trim()}…`;
 }
 
-function buildHighlights(post: DigestPost): string[] {
-  const topicLine = `주제: ${String(post.primaryTopic || "other").toUpperCase()}`;
-  const publishedLine = `게시일: ${post.publishedAt ? post.publishedAt.slice(0, 10) : "미확인"}`;
-  const summarySource = post.summary?.trim() || `${post.company} 기술 블로그의 최신 글을 살펴볼 만합니다.`;
-  return [topicLine, publishedLine, truncate(summarySource.replace(/\s+/g, " "), 180)];
-}
+export async function buildDiscordDigestMessage(
+  post: DigestPost,
+  timezone: string,
+  localDate: string,
+  options: DigestRuntimeOptions = {}
+): Promise<string> {
+  const article = await fetchArticleDigestContext(post.url, {
+    title: post.title,
+    summary: post.summary,
+    company: post.company
+  });
+  const title = article.title || post.title;
 
-export function buildDiscordDigestMessage(post: DigestPost, timezone: string, localDate: string): string {
-  const highlights = buildHighlights(post)
+  let summary = truncate(
+    article.summary?.replace(/\s+/g, " ") ||
+      article.description?.replace(/\s+/g, " ") ||
+      post.summary?.replace(/\s+/g, " ") ||
+      `${post.company} 기술 블로그 글입니다.`,
+    260
+  );
+  let whyItMatters = article.whyItMatters ? truncate(article.whyItMatters.replace(/\s+/g, " "), 220) : null;
+  let howItWorks = article.howItWorks ? truncate(article.howItWorks.replace(/\s+/g, " "), 220) : null;
+  let extraHighlights = article.highlights.slice(0, 3);
+
+  if (options.geminiApiKey) {
+    try {
+      const gemini = await generateGeminiDigestSummary(options.geminiApiKey, {
+        company: post.company,
+        title,
+        url: post.url,
+        primaryTopic: post.primaryTopic,
+        publishedAt: post.publishedAt,
+        article
+      });
+      summary = truncate(gemini.summary, 260);
+      whyItMatters = gemini.whyItMatters ? truncate(gemini.whyItMatters, 220) : whyItMatters;
+      howItWorks = gemini.howItWorks ? truncate(gemini.howItWorks, 220) : howItWorks;
+      extraHighlights = gemini.highlights.length ? gemini.highlights : extraHighlights;
+    } catch {
+      // Fall back to heuristic article extraction when Gemini is unavailable.
+    }
+  }
+
+  const highlights = [
+    `주제: ${String(post.primaryTopic || "other").toUpperCase()}`,
+    `게시일: ${post.publishedAt ? post.publishedAt.slice(0, 10) : "미확인"}`,
+    ...extraHighlights
+  ]
     .map((line, index) => `${index + 1}. ${line}`)
     .join("\n");
 
@@ -157,13 +203,20 @@ export function buildDiscordDigestMessage(post: DigestPost, timezone: string, lo
     `**TechScope 오늘의 랜덤 블로그**`,
     `기준일: ${localDate} (${timezone})`,
     "",
-    `**${post.title}**`,
+    `**${title}**`,
     `회사: ${post.company}`,
     "",
+    `요약: ${summary}`,
+    whyItMatters ? `배경: ${whyItMatters}` : null,
+    howItWorks ? `접근: ${howItWorks}` : null,
+    "",
+    `핵심 포인트`,
     highlights,
     "",
     `원문: ${post.url}`
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 async function markDeliverySuccess(db: DbLike, subscription: DiscordSubscription, localDate: string): Promise<void> {
@@ -291,7 +344,8 @@ async function pickRandomPost(db: DbLike): Promise<DigestPost | null> {
 
 export async function sendDiscordDigestNow(
   db: DbLike,
-  input: { webhookUrl: string; timezone: string; localDate?: string }
+  input: { webhookUrl: string; timezone: string; localDate?: string },
+  options: DigestRuntimeOptions = {}
 ): Promise<{ ok: true; post: DigestPost; localDate: string }> {
   const post = await pickRandomPost(db);
   if (!post) {
@@ -299,7 +353,7 @@ export async function sendDiscordDigestNow(
   }
 
   const localDate = input.localDate || getLocalDateKey(new Date(), input.timezone);
-  const content = buildDiscordDigestMessage(post, input.timezone, localDate);
+  const content = await buildDiscordDigestMessage(post, input.timezone, localDate, options);
   const res = await fetch(input.webhookUrl, {
     method: "POST",
     headers: { "content-type": "application/json; charset=utf-8" },
@@ -315,7 +369,8 @@ export async function sendDiscordDigestNow(
 
 export async function dispatchDueDiscordDigests(
   db: DbLike,
-  now = new Date()
+  now = new Date(),
+  options: DigestRuntimeOptions = {}
 ): Promise<{ dispatched: number; skipped: number; results: DeliveryResult[] }> {
   const dueSubscriptions = await listDueSubscriptions(db, now);
   const results: DeliveryResult[] = [];
@@ -340,7 +395,7 @@ export async function dispatchDueDiscordDigests(
         webhookUrl: subscription.webhookUrl,
         timezone: subscription.timezone,
         localDate
-      });
+      }, options);
 
       await markDeliverySuccess(db, subscription, localDate);
       results.push({

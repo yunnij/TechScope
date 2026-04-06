@@ -8,6 +8,7 @@ import {
 
 interface Env {
   DB: D1Database;
+  GEMINI_API_KEY?: string;
 }
 
 interface TestBody {
@@ -54,7 +55,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
   try {
     const localDate = getLocalDateKey(new Date(), timezone);
-    const result = await sendDiscordDigestNow(env.DB, { webhookUrl, timezone, localDate });
+    const result = await sendDiscordDigestNow(
+      env.DB,
+      { webhookUrl, timezone, localDate },
+      { geminiApiKey: env.GEMINI_API_KEY }
+    );
 
     return json({
       ok: true,
