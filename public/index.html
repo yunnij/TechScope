@@ -84,6 +84,58 @@
         </aside>
 
         <section class="main-column">
+          <section class="content-block digest-subscription">
+            <div class="section-head">
+              <div>
+                <h2>디스코드 하루 1회 요약 알림</h2>
+                <p>원하는 시각에 랜덤 블로그 1개를 요약해서 디스코드 웹훅으로 보냅니다.</p>
+              </div>
+            </div>
+            <form id="discordSubscriptionForm" class="subscription-form">
+              <label class="field">
+                <span>Discord Webhook URL</span>
+                <input
+                  id="discordWebhookUrl"
+                  class="search-input"
+                  type="url"
+                  placeholder="https://discord.com/api/webhooks/..."
+                  autocomplete="off"
+                  spellcheck="false"
+                  required
+                />
+              </label>
+              <div class="subscription-grid">
+                <label class="field">
+                  <span>발송 시간</span>
+                  <select id="digestHour" class="select-input" required></select>
+                </label>
+                <label class="field">
+                  <span>타임존</span>
+                  <input
+                    id="digestTimezone"
+                    class="search-input"
+                    type="text"
+                    placeholder="Asia/Seoul"
+                    autocomplete="off"
+                    spellcheck="false"
+                    required
+                  />
+                </label>
+              </div>
+              <div class="subscription-actions">
+                <button id="subscribeBtn" class="refresh-btn" type="submit">구독 저장</button>
+                <button id="testDigestBtn" class="ghost-toggle-btn" type="button">테스트 전송</button>
+                <button id="unsubscribeBtn" class="ghost-toggle-btn hidden" type="button">구독 취소</button>
+              </div>
+            </form>
+            <div id="subscriptionStatus" class="subscription-status" aria-live="polite">
+              디스코드 웹훅을 등록하면 하루 한 번 랜덤 기술 블로그 요약이 전송됩니다.
+            </div>
+            <p class="subscription-help">
+              로그인 없이 동작하며, 이 브라우저에 저장된 관리 토큰으로 구독을 취소합니다. 다른 브라우저에서 관리하려면 같은 토큰이 필요합니다.
+            </p>
+          </section>
+
           <section class="content-block">
             <div class="section-head">
               <h2>최신 글</h2>

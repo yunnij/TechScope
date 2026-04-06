@@ -1,4 +1,5 @@
 const THEME_KEY = "techscope-theme";
+const DISCORD_SUBSCRIPTION_TOKEN_KEY = "techscope-discord-manage-token";
 
 const state = {
   selectedCompanies: [],
@@ -9,7 +10,8 @@ const state = {
   pageSize: 60,
   allPosts: [],
   companies: [],
-  topics: []
+  topics: [],
+  discordSubscription: null
 };
 
 const els = {
@@ -31,10 +33,35 @@ const els = {
   activeFilters: document.querySelector("#activeFilters"),
   sourceList: document.querySelector("#sourceList"),
   copyToast: document.querySelector("#copyToast"),
-  sourceStatusToggle: document.querySelector("#sourceStatusToggle")
+  sourceStatusToggle: document.querySelector("#sourceStatusToggle"),
+  discordSubscriptionForm: document.querySelector("#discordSubscriptionForm"),
+  discordWebhookUrl: document.querySelector("#discordWebhookUrl"),
+  digestHour: document.querySelector("#digestHour"),
+  digestTimezone: document.querySelector("#digestTimezone"),
+  subscribeBtn: document.querySelector("#subscribeBtn"),
+  testDigestBtn: document.querySelector("#testDigestBtn"),
+  unsubscribeBtn: document.querySelector("#unsubscribeBtn"),
+  subscriptionStatus: document.querySelector("#subscriptionStatus")
 };
 
 let copyToastTimer = null;
+
+function getStoredSubscriptionToken() {
+  try {
+    return localStorage.getItem(DISCORD_SUBSCRIPTION_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function setStoredSubscriptionToken(token) {
+  try {
+    if (token) localStorage.setItem(DISCORD_SUBSCRIPTION_TOKEN_KEY, token);
+    else localStorage.removeItem(DISCORD_SUBSCRIPTION_TOKEN_KEY);
+  } catch {
+    // Ignore storage errors
+  }
+}
 
 function formatDate(value) {
   if (!value) return "날짜 없음";
@@ -556,6 +583,199 @@ function showCopyToast(message) {
   }, 1400);
 }
 
+function formatHour(hour) {
+  return `${String(hour).padStart(2, "0")}:00`;
+}
+
+function populateDigestHours() {
+  if (!els.digestHour) return;
+  clearChildren(els.digestHour);
+  for (let hour = 0; hour < 24; hour += 1) {
+    const option = document.createElement("option");
+    option.value = String(hour);
+    option.textContent = formatHour(hour);
+    if (hour === 9) option.selected = true;
+    els.digestHour.append(option);
+  }
+}
+
+function setSubscriptionStatus(message, tone = "neutral") {
+  if (!els.subscriptionStatus) return;
+  els.subscriptionStatus.textContent = message;
+  els.subscriptionStatus.dataset.tone = tone;
+}
+
+function maskWebhookPreview(value) {
+  return value || "-";
+}
+
+function renderSubscriptionState() {
+  const subscription = state.discordSubscription;
+  if (!els.unsubscribeBtn || !els.digestHour || !els.digestTimezone || !els.discordWebhookUrl) return;
+
+  if (!subscription) {
+    els.unsubscribeBtn.classList.add("hidden");
+    els.discordWebhookUrl.value = "";
+    els.discordWebhookUrl.placeholder = "https://discord.com/api/webhooks/...";
+    els.digestTimezone.value = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Seoul";
+    els.digestHour.value = "9";
+    setSubscriptionStatus("디스코드 웹훅을 등록하면 하루 한 번 랜덤 기술 블로그 요약이 전송됩니다.", "neutral");
+    return;
+  }
+
+  els.unsubscribeBtn.classList.remove("hidden");
+  els.digestTimezone.value = subscription.timezone;
+  els.digestHour.value = String(subscription.preferredHour);
+  els.discordWebhookUrl.value = "";
+  els.discordWebhookUrl.placeholder = `등록됨: ${maskWebhookPreview(subscription.webhookPreview)}`;
+  setSubscriptionStatus(
+    `구독 활성화됨 · 매일 ${formatHour(subscription.preferredHour)} (${subscription.timezone}) · 웹훅 ${maskWebhookPreview(subscription.webhookPreview)} · 마지막 발송 ${subscription.lastSentAt ? formatDateTime(subscription.lastSentAt) : "없음"}`,
+    subscription.lastStatus === "failed" ? "error" : "success"
+  );
+}
+
+async function loadSavedSubscription() {
+  const token = getStoredSubscriptionToken();
+  if (!token) {
+    renderSubscriptionState();
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/discord-subscriptions?token=${encodeURIComponent(token)}`);
+    if (res.status === 404) {
+      setStoredSubscriptionToken("");
+      state.discordSubscription = null;
+      renderSubscriptionState();
+      return;
+    }
+    if (!res.ok) throw new Error(`API ${res.status}`);
+    const data = await res.json();
+    state.discordSubscription = data.subscription ?? null;
+    renderSubscriptionState();
+  } catch (error) {
+    console.error(error);
+    setSubscriptionStatus("구독 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
+  }
+}
+
+async function handleSubscriptionSubmit(event) {
+  event.preventDefault();
+  if (!els.discordWebhookUrl || !els.digestTimezone || !els.digestHour || !els.subscribeBtn) return;
+
+  const submitLabel = els.subscribeBtn.textContent;
+  els.subscribeBtn.disabled = true;
+  els.subscribeBtn.textContent = "저장 중...";
+
+  try {
+    const res = await fetch("/api/discord-subscriptions", {
+      method: "POST",
+      headers: { "content-type": "application/json; charset=utf-8" },
+      body: JSON.stringify({
+        webhookUrl: els.discordWebhookUrl.value.trim(),
+        timezone: els.digestTimezone.value.trim(),
+        preferredHour: Number(els.digestHour.value),
+        manageToken: getStoredSubscriptionToken()
+      })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+      throw new Error(data.error || `API ${res.status}`);
+    }
+
+    setStoredSubscriptionToken(data.manageToken);
+    state.discordSubscription = data.subscription ?? null;
+    renderSubscriptionState();
+    showCopyToast(data.created ? "디스코드 알림 구독이 생성되었습니다." : "디스코드 알림 구독이 업데이트되었습니다.");
+  } catch (error) {
+    console.error(error);
+    setSubscriptionStatus(
+      error instanceof Error ? error.message : "구독 저장에 실패했습니다.",
+      "error"
+    );
+  } finally {
+    els.subscribeBtn.disabled = false;
+    els.subscribeBtn.textContent = submitLabel;
+  }
+}
+
+async function handleSubscriptionDelete() {
+  if (!els.unsubscribeBtn) return;
+  const token = getStoredSubscriptionToken();
+  if (!token) {
+    state.discordSubscription = null;
+    renderSubscriptionState();
+    return;
+  }
+
+  const original = els.unsubscribeBtn.textContent;
+  els.unsubscribeBtn.disabled = true;
+  els.unsubscribeBtn.textContent = "취소 중...";
+
+  try {
+    const res = await fetch(`/api/discord-subscriptions?token=${encodeURIComponent(token)}`, {
+      method: "DELETE"
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+      throw new Error(data.error || `API ${res.status}`);
+    }
+
+    setStoredSubscriptionToken("");
+    state.discordSubscription = null;
+    renderSubscriptionState();
+    showCopyToast("디스코드 알림 구독이 취소되었습니다.");
+  } catch (error) {
+    console.error(error);
+    setSubscriptionStatus(
+      error instanceof Error ? error.message : "구독 취소에 실패했습니다.",
+      "error"
+    );
+  } finally {
+    els.unsubscribeBtn.disabled = false;
+    els.unsubscribeBtn.textContent = original;
+  }
+}
+
+async function handleSubscriptionTest() {
+  if (!els.testDigestBtn || !els.digestTimezone || !els.discordWebhookUrl) return;
+
+  const original = els.testDigestBtn.textContent;
+  els.testDigestBtn.disabled = true;
+  els.testDigestBtn.textContent = "전송 중...";
+
+  try {
+    const res = await fetch("/api/discord-subscriptions-test", {
+      method: "POST",
+      headers: { "content-type": "application/json; charset=utf-8" },
+      body: JSON.stringify({
+        webhookUrl: els.discordWebhookUrl.value.trim(),
+        timezone: els.digestTimezone.value.trim(),
+        manageToken: getStoredSubscriptionToken()
+      })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+      throw new Error(data.error || `API ${res.status}`);
+    }
+
+    setSubscriptionStatus(
+      `테스트 전송 완료 · ${data.post.company} · ${data.post.title}`,
+      "success"
+    );
+    showCopyToast("디스코드로 테스트 알림을 전송했습니다.");
+  } catch (error) {
+    console.error(error);
+    setSubscriptionStatus(
+      error instanceof Error ? error.message : "테스트 전송에 실패했습니다.",
+      "error"
+    );
+  } finally {
+    els.testDigestBtn.disabled = false;
+    els.testDigestBtn.textContent = original;
+  }
+}
+
 async function loadPosts() {
   els.statusText.textContent = "불러오는 중";
   const params = new URLSearchParams({ limit: "120" });
@@ -629,6 +849,16 @@ els.sourceStatusToggle?.addEventListener("click", () => {
   els.sourceStatusToggle.setAttribute("aria-expanded", String(!isHidden));
 });
 
+els.discordSubscriptionForm?.addEventListener("submit", handleSubscriptionSubmit);
+els.testDigestBtn?.addEventListener("click", handleSubscriptionTest);
+els.unsubscribeBtn?.addEventListener("click", handleSubscriptionDelete);
+
 initTheme();
+populateDigestHours();
+renderSubscriptionState();
+if (els.digestTimezone) {
+  els.digestTimezone.value = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Seoul";
+}
 setRange(state.range);
+loadSavedSubscription();
 loadPosts();

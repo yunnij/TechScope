@@ -471,6 +471,77 @@ body {
   margin-top: 0.9rem;
 }
 
+.subscription-form {
+  margin-top: 0.85rem;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.subscription-grid {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 0.8rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.42rem;
+}
+
+.field span {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.select-input {
+  width: 100%;
+  height: 42px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--surface-strong), var(--surface-soft));
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 0 0.8rem;
+  outline: none;
+}
+
+.subscription-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.subscription-status {
+  margin-top: 0.8rem;
+  border-radius: 16px;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, #ffffff, #fafafd);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.subscription-status[data-tone="success"] {
+  border-color: rgba(52, 199, 89, 0.18);
+  background: rgba(52, 199, 89, 0.06);
+  color: #1d6b34;
+}
+
+.subscription-status[data-tone="error"] {
+  border-color: rgba(255, 59, 48, 0.18);
+  background: rgba(255, 59, 48, 0.06);
+  color: #9a2b25;
+}
+
+.subscription-help {
+  margin: 0.6rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
 .section-head {
   display: flex;
   justify-content: space-between;
@@ -935,6 +1006,12 @@ body {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
+:root[data-theme="dark"] .select-input {
+  background: linear-gradient(180deg, #21252d, #181b21);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #eef1f5;
+}
+
 :root[data-theme="dark"] .search-input::placeholder {
   color: #a6adb8;
 }
@@ -964,7 +1041,8 @@ body {
 
 :root[data-theme="dark"] .post-card,
 :root[data-theme="dark"] .source-item,
-:root[data-theme="dark"] .empty-state {
+:root[data-theme="dark"] .empty-state,
+:root[data-theme="dark"] .subscription-status {
   background: linear-gradient(180deg, #191c22, #14171c);
   border-color: rgba(255, 255, 255, 0.08);
 }
@@ -979,6 +1057,22 @@ body {
 
 :root[data-theme="dark"] .post-summary {
   color: #afb5bf;
+}
+
+:root[data-theme="dark"] .subscription-status {
+  color: #b4b9c3;
+}
+
+:root[data-theme="dark"] .subscription-status[data-tone="success"] {
+  background: rgba(52, 199, 89, 0.12);
+  border-color: rgba(52, 199, 89, 0.22);
+  color: #b7e4c2;
+}
+
+:root[data-theme="dark"] .subscription-status[data-tone="error"] {
+  background: rgba(255, 59, 48, 0.12);
+  border-color: rgba(255, 59, 48, 0.22);
+  color: #ffc1bc;
 }
 
 :root[data-theme="dark"] .company-chip {
@@ -1074,6 +1168,10 @@ body {
 
   .post-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .subscription-grid {
+    grid-template-columns: 1fr;
   }
 }
 

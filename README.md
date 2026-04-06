@@ -20,12 +20,13 @@
 - 링크 복사 버튼으로 URL 복사
 - Cloudflare D1 기반 저장 및 중복 방지(`url` 기준 upsert)
 - 수동 크롤링 및 크롤링 실행 이력 확인 API
+- 디스코드 웹훅 기반 하루 1회 랜덤 블로그 요약 구독/테스트 발송
 
 ## Architecture
 
 - Frontend: Cloudflare Pages (`public/`)
 - API: Cloudflare Pages Functions (`functions/api/*`)
-- DB: Cloudflare D1 (`posts`, `crawl_runs`, `crawl_run_results`)
+- DB: Cloudflare D1 (`posts`, `crawl_runs`, `crawl_run_results`, `discord_subscriptions`)
 - Batch: Cloudflare Worker Cron (`workers/crawler`)
 
 ## Project Structure
@@ -51,18 +52,24 @@
 - `GET /api/crawl-runs`
   - 최근 크롤링 실행 이력 조회
   - Query: `limit`, `includeResults=1`
+- `GET|POST|DELETE /api/discord-subscriptions`
+  - 디스코드 요약 알림 구독 조회/저장/취소
+  - Query: `token` (`GET`, `DELETE`)
+- `POST /api/discord-subscriptions-test`
+  - 디스코드 테스트 전송
 
 ## Deployment (Cloudflare)
 
 - Cloudflare Pages: 프론트 + Pages Functions
 - Cloudflare D1: 게시글/크롤링 로그 저장
-- Cloudflare Worker + Cron Trigger: 일 1회 수집 배치
+- Cloudflare Worker + Cron Trigger: 매시간 구독 발송 체크 + UTC 03:00 일일 수집
 
 배포 시 확인할 점
 
 - Pages / Worker 모두 동일한 D1을 `DB` 바인딩으로 연결
 - `database_id`는 로컬 `.env` 기반 동기화 스크립트로 관리 (`D1_DATABASE_ID`)
 - 필요 시 `CRAWL_ADMIN_TOKEN` 설정 후 `/api/admin/crawl` 보호
+- `migrations/0003_discord_subscriptions.sql` 적용
 
 ## Customization
 
@@ -70,6 +77,7 @@
 - 분야 분류 규칙: `shared/topics.ts`
 - RSS / Atom 파싱: `shared/rss.ts`
 - 크롤링 파이프라인: `shared/crawler.ts`
+- 디스코드 구독/발송 로직: `shared/discord.ts`
 - 대시보드 UI: `public/index.html`, `public/app.js`, `public/styles.css`
 
 ## Notes
